@@ -1,6 +1,6 @@
 """
-Cortex VC Diligence — AI-Powered Startup Investment Analysis
-Comprehensive due diligence reports for investors
+Cortex VC Diligence — AI Startup Investment Analysis
+Multi-agent pipeline for startup due diligence
 """
 import streamlit as st
 import google.generativeai as genai
@@ -8,132 +8,128 @@ import json
 import re
 from datetime import datetime
 
-st.set_page_config(page_title="Cortex VC Diligence | AI Investment Analysis", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Cortex VC Diligence | Startup Analysis", page_icon="📊", layout="wide")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    .stApp { font-family: 'Inter', sans-serif; }
-    .main-header { text-align: center; padding: 2rem 0; }
-    .main-header h1 { font-size: 2.5rem; font-weight: 700; background: linear-gradient(135deg, #10b981 0%, #059669 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+.stApp { font-family: 'Inter', sans-serif; }
+.main-header { text-align: center; padding: 2rem 0; }
+.main-header h1 { font-size: 2.5rem; font-weight: 700; background: linear-gradient(135deg, #10b981 0%, #059669 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.score-card { background: #f0fdf4; border: 2px solid #10b981; border-radius: 16px; padding: 2rem; text-align: center; }
+.score-card h2 { font-size: 3rem; color: #059669; margin: 0; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<div class="main-header">
-    <h1>📊 Cortex VC Diligence</h1>
-    <p>AI-powered startup due diligence for investors & VCs</p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown('<div class="main-header"><h1>📊 Cortex VC Diligence</h1><p>AI-powered startup investment analysis in minutes, not weeks</p></div>', unsafe_allow_html=True)
 
 with st.sidebar:
     st.title("⚙️ Settings")
-    gemini_key = st.text_input("Google Gemini API Key", type="password", help="Free at aistudio.google.com/apikey")
+    gemini_key = st.text_input("Google Gemini API Key", type="password")
     st.divider()
-    st.markdown("### 💎 Cortex Pro")
-    st.markdown("Unlimited reports, portfolio tracking, deal flow management.")
-    st.link_button("Upgrade — $199/mo", "https://buy.stripe.com/test_placeholder", use_container_width=True)
+    st.markdown("### 💎 Fund Pro")
+    st.markdown("- Portfolio tracking\n- Market comparables\n- LP-ready reports\n- Deal flow scoring")
+    st.link_button("Start Fund Pro — $199/mo", "https://buy.stripe.com/test_placeholder", use_container_width=True)
 
-company_name = st.text_input("🏢 Company/Startup Name", placeholder="e.g. Stripe, Notion, Linear")
-company_url = st.text_input("🌐 Company Website (optional)", placeholder="https://example.com")
-col1, col2 = st.columns(2)
-with col1:
-    stage = st.selectbox("📈 Funding Stage", ["Pre-Seed", "Seed", "Series A", "Series B", "Series C+", "Growth", "Pre-IPO"])
-    sector = st.text_input("🏭 Sector", placeholder="e.g. Fintech, SaaS, AI/ML")
-with col2:
-    raise_amount = st.text_input("💰 Raising (optional)", placeholder="e.g. $10M Series A")
-    additional_context = st.text_area("📝 Additional Context", placeholder="Any info about the company...", height=80)
+company = st.text_input("🏢 Company Name", placeholder="e.g., Stripe, Notion, Linear")
+website = st.text_input("🌐 Website (optional)", placeholder="https://example.com")
+context = st.text_area("📝 Additional Context (optional)", placeholder="Stage, sector, what you know...", height=80)
 
-generate = st.button("📊 Generate Due Diligence Report", type="primary", use_container_width=True,
-                     disabled=not (gemini_key and company_name))
+analyze = st.button("🔍 Run Due Diligence", type="primary", use_container_width=True,
+                     disabled=not (company and gemini_key))
 
-if generate:
+if analyze:
     genai.configure(api_key=gemini_key)
     model = genai.GenerativeModel('gemini-2.0-flash')
+    
+    with st.status("🔍 Running due diligence pipeline...", expanded=True) as status:
+        st.write(f"Stage 1/4: Researching {company}...")
+        
+        prompt = f"""You are a senior VC analyst conducting due diligence on a startup.
 
-    with st.status("🧠 Running due diligence analysis...", expanded=True) as status:
-        st.write(f"Analyzing {company_name}...")
+COMPANY: {company}
+WEBSITE: {website or 'Not provided'}
+CONTEXT: {context or 'None'}
 
-        prompt = f"""You are a senior VC analyst. Perform comprehensive due diligence on this startup.
-
-COMPANY: {company_name}
-WEBSITE: {company_url or 'Not provided'}
-STAGE: {stage}
-SECTOR: {sector or 'Not specified'}
-RAISING: {raise_amount or 'Not specified'}
-ADDITIONAL CONTEXT: {additional_context or 'None'}
-
-Using your knowledge, generate a thorough investment analysis. Return JSON:
+Conduct thorough analysis and return JSON:
 {{
-    "company_overview": {{
-        "name": "{company_name}",
-        "sector": "<sector>",
-        "stage": "{stage}",
-        "founded": "<year if known>",
-        "headquarters": "<location if known>",
-        "description": "<2-3 sentence description>",
-        "business_model": "<how they make money>"
+    "company": {{
+        "name": "{company}",
+        "description": "<what they do in 1-2 sentences>",
+        "founded": "<year>",
+        "hq": "<location>",
+        "stage": "<Pre-seed/Seed/Series A/B/C/etc>",
+        "sector": "<primary sector>",
+        "business_model": "<how they make money>",
+        "website": "{website or 'Unknown'}"
     }},
-    "market_analysis": {{
-        "tam": "<total addressable market estimate>",
-        "sam": "<serviceable addressable market>",
-        "som": "<serviceable obtainable market>",
-        "growth_rate": "<market CAGR>",
-        "market_trends": ["<key trends>"],
-        "market_risks": ["<key risks>"]
+    "team": {{
+        "founders": ["<name - background>"],
+        "team_size": "<estimate>",
+        "team_score": <1-10>,
+        "team_notes": "<assessment>"
     }},
-    "competitive_landscape": {{
-        "direct_competitors": [
-            {{"name": "<competitor>", "funding": "<funding>", "differentiator": "<what sets them apart>"}}
-        ],
-        "competitive_advantages": ["<moats>"],
-        "competitive_risks": ["<threats>"]
+    "market": {{
+        "tam": "<Total Addressable Market size>",
+        "sam": "<Serviceable Available Market>",
+        "som": "<Serviceable Obtainable Market>",
+        "market_growth": "<annual growth rate>",
+        "market_score": <1-10>,
+        "market_notes": "<assessment>"
     }},
-    "team_assessment": {{
-        "leadership_quality": "<assessment>",
-        "key_hires_needed": ["<roles>"],
-        "team_risks": ["<risks>"]
+    "product": {{
+        "description": "<what the product does>",
+        "differentiation": "<key differentiators>",
+        "moat": "<competitive moat>",
+        "product_score": <1-10>,
+        "product_notes": "<assessment>"
     }},
-    "financial_analysis": {{
-        "revenue_model": "<description>",
-        "unit_economics": "<LTV/CAC/margins if estimable>",
-        "burn_rate_assessment": "<assessment>",
-        "path_to_profitability": "<assessment>"
+    "traction": {{
+        "revenue": "<if known>",
+        "users": "<if known>",
+        "growth_rate": "<if known>",
+        "key_metrics": "<notable metrics>",
+        "traction_score": <1-10>,
+        "traction_notes": "<assessment>"
     }},
-    "investment_thesis": {{
-        "bull_case": "<why this could be huge>",
-        "bear_case": "<what could go wrong>",
-        "base_case": "<most likely outcome>"
+    "competition": {{
+        "direct_competitors": ["<competitor 1>", "<competitor 2>", "<competitor 3>"],
+        "competitive_advantage": "<main advantage>",
+        "competition_score": <1-10>,
+        "competition_notes": "<assessment>"
     }},
-    "risk_matrix": [
-        {{"risk": "<risk>", "likelihood": "<low|medium|high>", "impact": "<low|medium|high>", "mitigation": "<strategy>"}}
+    "financials": {{
+        "last_funding": "<amount and date if known>",
+        "total_raised": "<if known>",
+        "valuation": "<if known>",
+        "burn_rate": "<estimate if possible>",
+        "runway": "<estimate>",
+        "financial_score": <1-10>
+    }},
+    "risks": [
+        {{"risk": "<risk description>", "severity": "<high/medium/low>", "mitigation": "<possible mitigation>"}},
+        ... (5-7 risks)
     ],
-    "recommendation": {{
-        "verdict": "<INVEST|PASS|WATCH>",
-        "confidence": "<low|medium|high>",
-        "rationale": "<2-3 sentences>",
-        "suggested_terms": "<if INVEST, suggested terms>"
-    }},
-    "due_diligence_checklist": [
-        {{"item": "<what to verify>", "priority": "<critical|important|nice-to-have>", "status": "pending"}}
-    ],
-    "score": {{
-        "overall": <1-10>,
-        "market": <1-10>,
-        "team": <1-10>,
-        "product": <1-10>,
-        "financials": <1-10>,
-        "timing": <1-10>
-    }}
+    "opportunities": ["<opportunity 1>", "<opportunity 2>", "<opportunity 3>"],
+    "overall_score": <1-100>,
+    "investment_thesis": "<2-3 sentence thesis for/against investing>",
+    "recommendation": "<STRONG BUY / BUY / HOLD / PASS / STRONG PASS>",
+    "key_questions": ["<question for founders>", ... (5 questions)]
 }}
 
-Be thorough and specific. Use real market data where possible. Return ONLY valid JSON."""
-
+Be analytical and honest. Use real data where possible. Score objectively.
+Return ONLY valid JSON."""
+        
+        st.write("Stage 2/4: Analyzing market & competition...")
+        st.write("Stage 3/4: Evaluating team & product...")
+        st.write("Stage 4/4: Generating investment thesis...")
+        
         response = model.generate_content(prompt)
         text = response.text.strip()
         if text.startswith("```"):
             text = re.sub(r'^```json?\n?', '', text)
             text = re.sub(r'\n?```$', '', text)
+        
         try:
             data = json.loads(text)
         except:
@@ -143,104 +139,86 @@ Be thorough and specific. Use real market data where possible. Return ONLY valid
                 text = re.sub(r'^```json?\n?', '', text)
                 text = re.sub(r'\n?```$', '', text)
             data = json.loads(text)
-
-        status.update(label="✅ Report ready!", state="complete")
-
-    # Display report
-    overview = data.get("company_overview", {})
-    scores = data.get("score", {})
-    rec = data.get("recommendation", {})
-
-    # Header with verdict
-    verdict = rec.get("verdict", "WATCH")
-    verdict_color = {"INVEST": "#10b981", "PASS": "#ef4444", "WATCH": "#f59e0b"}.get(verdict, "#6b7280")
-
-    st.markdown(f"""
-    <div style="text-align:center; padding:2rem; background:#f8f9fa; border-radius:16px; margin:1rem 0;">
-        <h2>{overview.get('name', company_name)}</h2>
-        <p style="color:#6b7280;">{overview.get('description', '')}</p>
-        <div style="font-size:2.5rem; font-weight:800; color:{verdict_color}; margin:1rem 0;">{verdict}</div>
-        <p>Overall Score: <b>{scores.get('overall', 'N/A')}/10</b> | Confidence: {rec.get('confidence', 'N/A')}</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Scores
-    st.subheader("📊 Scores")
-    s1, s2, s3, s4, s5 = st.columns(5)
-    s1.metric("Market", f"{scores.get('market', '?')}/10")
-    s2.metric("Team", f"{scores.get('team', '?')}/10")
-    s3.metric("Product", f"{scores.get('product', '?')}/10")
-    s4.metric("Financials", f"{scores.get('financials', '?')}/10")
-    s5.metric("Timing", f"{scores.get('timing', '?')}/10")
-
-    # Tabs
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📈 Market", "⚔️ Competition", "👥 Team", "💰 Financials", "⚠️ Risks", "✅ Checklist"])
-
+        
+        status.update(label="✅ Due diligence complete!", state="complete")
+    
+    # Score
+    score = data.get("overall_score", 50)
+    rec = data.get("recommendation", "HOLD")
+    rec_color = "#22c55e" if "BUY" in rec else "#ef4444" if "PASS" in rec else "#f59e0b"
+    
+    s1, s2, s3 = st.columns([1,2,1])
+    with s2:
+        st.markdown(f"""
+        <div class="score-card">
+            <p style="color:#6b7280;margin:0;">Investment Score</p>
+            <h2>{score}/100</h2>
+            <p style="font-size:1.5rem;font-weight:700;color:{rec_color};margin:0;">{rec}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown(f"### 💡 Investment Thesis")
+    st.info(data.get("investment_thesis", ""))
+    
+    # Component Scores
+    st.markdown("### 📊 Component Scores")
+    scores = {
+        "👥 Team": data.get("team", {}).get("team_score", 5),
+        "📈 Market": data.get("market", {}).get("market_score", 5),
+        "🛠️ Product": data.get("product", {}).get("product_score", 5),
+        "🚀 Traction": data.get("traction", {}).get("traction_score", 5),
+        "⚔️ Competition": data.get("competition", {}).get("competition_score", 5),
+        "💰 Financials": data.get("financials", {}).get("financial_score", 5),
+    }
+    cols = st.columns(6)
+    for i, (label, score_val) in enumerate(scores.items()):
+        color = "#22c55e" if score_val >= 7 else "#f59e0b" if score_val >= 5 else "#ef4444"
+        cols[i].markdown(f"<div style='text-align:center;'><p style='margin:0;font-size:0.85rem;'>{label}</p><p style='font-size:2rem;font-weight:700;color:{color};margin:0;'>{score_val}</p></div>", unsafe_allow_html=True)
+    
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏢 Company", "📊 Analysis", "⚠️ Risks", "❓ Questions", "📄 Full Report"])
+    
     with tab1:
-        market = data.get("market_analysis", {})
-        m1, m2, m3 = st.columns(3)
-        m1.metric("TAM", market.get("tam", "N/A"))
-        m2.metric("SAM", market.get("sam", "N/A"))
-        m3.metric("Growth", market.get("growth_rate", "N/A"))
-        st.markdown("**Trends:**")
-        for t in market.get("market_trends", []): st.markdown(f"- 📈 {t}")
-        st.markdown("**Risks:**")
-        for r in market.get("market_risks", []): st.markdown(f"- ⚠️ {r}")
-
+        comp = data.get("company", {})
+        st.markdown(f"**{comp.get('name', company)}** — {comp.get('description', '')}")
+        st.markdown(f"- **Stage:** {comp.get('stage', 'N/A')}")
+        st.markdown(f"- **Sector:** {comp.get('sector', 'N/A')}")
+        st.markdown(f"- **Business Model:** {comp.get('business_model', 'N/A')}")
+        
+        fin = data.get("financials", {})
+        st.markdown("### 💰 Financials")
+        st.markdown(f"- **Last Funding:** {fin.get('last_funding', 'N/A')}")
+        st.markdown(f"- **Total Raised:** {fin.get('total_raised', 'N/A')}")
+        st.markdown(f"- **Valuation:** {fin.get('valuation', 'N/A')}")
+    
     with tab2:
-        comp = data.get("competitive_landscape", {})
-        for c in comp.get("direct_competitors", []):
-            st.markdown(f"**{c.get('name', '')}** — {c.get('funding', '')} — {c.get('differentiator', '')}")
-        st.markdown("**Moats:**")
-        for a in comp.get("competitive_advantages", []): st.markdown(f"- 🏰 {a}")
-
+        for section, key in [("Team", "team"), ("Market", "market"), ("Product", "product"), ("Traction", "traction"), ("Competition", "competition")]:
+            d = data.get(key, {})
+            notes_key = f"{key}_notes"
+            st.markdown(f"### {section}")
+            st.markdown(d.get(notes_key, "No data available"))
+    
     with tab3:
-        team = data.get("team_assessment", {})
-        st.markdown(team.get("leadership_quality", ""))
-        st.markdown("**Key Hires Needed:**")
-        for h in team.get("key_hires_needed", []): st.markdown(f"- 👤 {h}")
-
-    with tab4:
-        fin = data.get("financial_analysis", {})
-        st.markdown(f"**Revenue Model:** {fin.get('revenue_model', '')}")
-        st.markdown(f"**Unit Economics:** {fin.get('unit_economics', '')}")
-        st.markdown(f"**Path to Profitability:** {fin.get('path_to_profitability', '')}")
-
-    with tab5:
-        for risk in data.get("risk_matrix", []):
-            emoji = "🔴" if risk.get("impact") == "high" else "🟡" if risk.get("impact") == "medium" else "🟢"
-            with st.expander(f"{emoji} {risk.get('risk', '')} (L:{risk.get('likelihood', '')} / I:{risk.get('impact', '')})"):
+        for risk in data.get("risks", []):
+            sev = risk.get("severity", "medium")
+            emoji = "🔴" if sev == "high" else "🟡" if sev == "medium" else "🟢"
+            with st.expander(f"{emoji} {risk.get('risk', '')}"):
+                st.markdown(f"**Severity:** {sev.upper()}")
                 st.markdown(f"**Mitigation:** {risk.get('mitigation', '')}")
-
-    with tab6:
-        for item in data.get("due_diligence_checklist", []):
-            priority_emoji = "🔴" if item.get("priority") == "critical" else "🟡" if item.get("priority") == "important" else "🔵"
-            st.checkbox(f"{priority_emoji} {item.get('item', '')} [{item.get('priority', '')}]")
-
-    # Investment thesis
-    st.markdown("### 📋 Investment Thesis")
-    t1, t2, t3 = st.columns(3)
-    with t1:
-        st.markdown("**🟢 Bull Case**")
-        st.markdown(data.get("investment_thesis", {}).get("bull_case", ""))
-    with t2:
-        st.markdown("**🟡 Base Case**")
-        st.markdown(data.get("investment_thesis", {}).get("base_case", ""))
-    with t3:
-        st.markdown("**🔴 Bear Case**")
-        st.markdown(data.get("investment_thesis", {}).get("bear_case", ""))
-
-    st.markdown(f"### Recommendation\n{rec.get('rationale', '')}")
-
+        
+        st.markdown("### 🌟 Opportunities")
+        for opp in data.get("opportunities", []):
+            st.markdown(f"- ✨ {opp}")
+    
+    with tab4:
+        st.markdown("### Questions for Founders")
+        for q in data.get("key_questions", []):
+            st.markdown(f"- ❓ {q}")
+    
+    with tab5:
+        st.json(data)
+    
     st.download_button("📥 Download Report (JSON)", json.dumps(data, indent=2),
-                      file_name=f"diligence-{company_name.replace(' ', '-')}-{datetime.now().strftime('%Y%m%d')}.json")
-
-    st.markdown("""
-    ---
-    ### 🚀 Managing a portfolio?
-    **Cortex Pro** tracks your entire deal flow, generates reports in bulk, and alerts you to market changes.
-    [Start Pro — $199/mo](https://buy.stripe.com/test_placeholder)
-    """)
+                      file_name=f"dd-{company.lower().replace(' ','-')}-{datetime.now().strftime('%Y%m%d')}.json")
 
 st.markdown("---")
-st.markdown("*Cortex VC Diligence — [Cortex AI Suite](/) • Powered by Gemini • No data stored*")
+st.markdown('<div style="text-align:center;color:#9ca3af;"><p>Cortex VC Diligence — Part of <a href="/">Cortex AI Suite</a></p></div>', unsafe_allow_html=True)
